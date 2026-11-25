@@ -1,0 +1,18 @@
+# Expects ./data/lake (from flightlake) and ./data/incidents.json (investigator build-incidents)
+services:
+  mcp:
+    build: .
+    command: python -m flightinvestigator.mcp_server --http --port 8765
+    volumes: ["./data:/data:ro"]
+    ports: ["8765:8765"]
+  api:
+    build: .
+    volumes: ["./data:/data:ro"]
+    ports: ["8090:8090"]
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-scripted}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}

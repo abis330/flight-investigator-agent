@@ -1,0 +1,27 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: pip install -e ".[dev]"
+      - run: ruff check src tests
+      - run: pytest -q   # scripted LLM + real MCP stdio round-trip, no API keys needed
+  agent-eval:
+    # optional: nightly LLM evaluation when a key is configured
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: test
+    env: {ANTHROPIC_API_KEY: "${{ secrets.ANTHROPIC_API_KEY }}"}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: pip install -e ".[anthropic]"
+      - run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then echo "no key, skipping"; exit 0; fi
+          flightlake simulate --n 120 --out data/raw && flightlake ingest data/raw --lake data/lake
+          investigator build-incidents && investigator evaluate --provider anthropic --limit 20
